@@ -1,7 +1,7 @@
 import React from 'react'
 import { colorToCss } from '../utils';
 
-const Rectangle = ({ layer, onPointerDown, id, selectionColor }) => {
+const Rectangle = ({ layer, onPointerDown, id, selected }) => {
   const { x, y, width, height, fill } = layer;
 
   return (
@@ -16,7 +16,7 @@ const Rectangle = ({ layer, onPointerDown, id, selectionColor }) => {
       height={height}
       fill={fill ? colorToCss(fill) : "#CCC"}
       strokeWidth={1}
-      stroke={selectionColor || "transparent"}
+      stroke={selected ? '#2563EB' : "transparent"}
     />
   );
 }

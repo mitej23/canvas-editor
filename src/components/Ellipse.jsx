@@ -1,7 +1,7 @@
 import React from 'react'
 import { colorToCss } from '../utils';
 
-const Ellipse = ({ layer, onPointerDown, id, selectionColor }) => {
+const Ellipse = ({ layer, onPointerDown, id, selectionColor, selected }) => {
   return (
     <ellipse
       onPointerDown={(e) => onPointerDown(e, id)}
@@ -13,7 +13,7 @@ const Ellipse = ({ layer, onPointerDown, id, selectionColor }) => {
       rx={layer?.width / 2}
       ry={layer?.height / 2}
       fill={layer?.fill ? colorToCss(layer?.fill) : "#CCC"}
-      stroke={selectionColor || "transparent"}
+      stroke={selected ? '#2563EB' : "transparent"}
       strokeWidth="1"
     />
   );

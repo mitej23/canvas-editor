@@ -1,7 +1,7 @@
 import { getSvgPathFromStroke } from '../utils';
 import getStroke from 'perfect-freehand';
 
-const Path = ({ x, y, onPointerDown, stroke, fill, points }) => {
+const Path = ({ x, y, onPointerDown, fill, points, selected }) => {
   return (
     <path
       onPointerDown={onPointerDown}
@@ -19,7 +19,7 @@ const Path = ({ x, y, onPointerDown, stroke, fill, points }) => {
       x={0}
       y={0}
       fill={fill}
-      stroke={stroke}
+      stroke={selected ? '#2563EB' : "transparent"}
       strokeWidth={1}
     />
   );

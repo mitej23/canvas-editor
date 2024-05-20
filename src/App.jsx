@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react'
 import ToolsBar from './components/ToolsBar';
-import { colorToCss, penPointsToPathLayer, pointerEventToCanvasPoint } from './utils';
+import { colorToCss, findIntersectingLayersWithRectangle, penPointsToPathLayer, pointerEventToCanvasPoint, resizeBounds } from './utils';
 import Path from './components/Path';
 import LayerComponent from './components/LayerComponent';
 import { nanoid } from 'nanoid';
+import SelectionBox from './components/SelectionBox';
 
 export const CanvasMode = Object.freeze({
   None: 'None',
@@ -68,21 +69,22 @@ function App() {
 
   const startDrawing = useCallback(
     (point, pressure) => {
-      console.log(point, pressure)
-      setMyPresence({
+      setMyPresence(prevPresence => ({
+        ...prevPresence,
         pencilDraft: [[point.x, point.y, pressure]],
         penColor: lastUsedColor,
-      });
+      }));
     },
-    [lastUsedColor]
+    [lastUsedColor] // Remove `myPresence` from dependencies
   );
+
 
   const continueDrawing = useCallback(
     (point, e) => {
       if (canvasState.mode !== CanvasMode.Pencil || e.buttons !== 1) {
         return;
       }
-      console.log(point, camera)
+      // console.log(point, camera)
 
       setPencilDraft((prevPencilDraft) => {
         if (prevPencilDraft?.length === 1 && prevPencilDraft[0][0] === point.x && prevPencilDraft[0][1] === point.y) {
@@ -95,7 +97,6 @@ function App() {
     [canvasState.mode, camera]
   );
 
-  // console.log(pencilDraft)
 
   const insertPath = useCallback(
     () => {
@@ -124,6 +125,159 @@ function App() {
     [lastUsedColor, setLayersId, setLayers, setMyPresence, setCanvasState, camera]
   );
 
+  const insertLayer = useCallback(
+    (layerType, position) => {
+
+      const layerId = nanoid();
+      const newLayer = {
+        type: layerType,
+        x: position.x,
+        y: position.y,
+        height: 100,
+        width: 100,
+        fill: lastUsedColor,
+      }
+      setLayersId(prevLayersId => [...prevLayersId, layerId]);
+      setLayers(prevLayers => ({
+        ...prevLayers,
+        [layerId]: newLayer,
+      }));
+
+      setMyPresence(prevPresence => ({
+        ...prevPresence,
+        selection: [layerId]
+      }));
+      setCanvasState({ mode: CanvasMode.None });
+
+
+    }, [lastUsedColor]
+  )
+
+  const unselectLayers = useCallback(() => {
+    setMyPresence(prevPresence => {
+      if (prevPresence?.selection?.length > 0) {
+        return { ...prevPresence, selection: [] };
+      }
+      return prevPresence;
+    });
+  }, []);
+
+  const startMultiSelection = useCallback((current, origin) => {
+    if (Math.abs(current.x - origin.x) + Math.abs(current.y - origin.y) > 5) {
+      // Start multi selection
+      setCanvasState({
+        mode: CanvasMode.SelectionNet,
+        origin,
+        current,
+      });
+    }
+  }, [])
+
+  const updateSelectionNet = useCallback((current, origin) => {
+    setCanvasState({
+      mode: CanvasMode.SelectionNet,
+      origin: origin,
+      current,
+    });
+
+    const ids = findIntersectingLayersWithRectangle(
+      layersId,
+      layers,
+      origin,
+      current
+    );
+
+    console.log(ids); // Log to inspect the ids
+
+    setMyPresence(prevMyPresence => {
+      const newPresence = {
+        ...prevMyPresence,
+        selection: ids
+      };
+      console.log(newPresence); // Log to inspect the new presence state before setting it
+      return newPresence;
+    });
+  }, [layersId, layers]);
+
+
+  const onLayerPointerDown = useCallback(
+    (e, layerId) => {
+      // console.log(layerId)
+      if (
+        canvasState.mode === CanvasMode.Pencil ||
+        canvasState.mode === CanvasMode.Inserting
+      ) {
+        return;
+      }
+
+      // // history.pause();
+      e.stopPropagation();
+      const point = pointerEventToCanvasPoint(e, camera);
+      if (!myPresence?.selection.includes(layerId)) {
+        setMyPresence(prev => { return { ...prev, selection: [layerId] } });
+      }
+      setCanvasState({ mode: CanvasMode.Translating, current: point });
+    },
+    [setCanvasState, camera, canvasState.mode, myPresence]
+  );
+
+  // ------------------- only for mulitplayer ------------------------------
+
+  // const layerIdsToColorSelection = useMemo(() => {
+  //   const layerIdsToColorSelection: Record<string, string> = {};
+
+  //   for (const user of selections) {
+  //     const [connectionId, selection] = user;
+  //     for (const layerId of selection) {
+  //       layerIdsToColorSelection[layerId] = connectionIdToColor(connectionId);
+  //     }
+  //   }
+
+  //   return layerIdsToColorSelection;
+  // }, [selections]);
+
+  const onResizeHandlePointerDown = useCallback(
+    (corner, initialBounds) => {
+      // history.pause();
+      setCanvasState({
+        mode: CanvasMode.Resizing,
+        initialBounds,
+        corner,
+      });
+    },
+    []
+  );
+
+  const resizeSelectedLayer = useCallback(
+    (point) => {
+      console.log("resizing...")
+      if (canvasState.mode !== CanvasMode.Resizing) {
+        return;
+      }
+
+      const bounds = resizeBounds(
+        canvasState.initialBounds,
+        canvasState.corner,
+        point
+      );
+
+      setLayers(prevLayers => {
+        const layerId = myPresence.selection[0];
+        const layer = prevLayers[layerId];
+        if (layer) {
+          return {
+            ...prevLayers,
+            [layerId]: {
+              ...layer,
+              ...bounds
+            }
+          };
+        }
+        return prevLayers;
+      });
+    },
+    [canvasState, myPresence.selection]
+  );
 
   // ===================================== Pointer Events =====================
 
@@ -150,7 +304,7 @@ function App() {
         startDrawing(point, e.pressure);
         return;
       }
-
+      // for selection 
       setCanvasState({ origin: point, mode: CanvasMode.Pressing });
     },
     [camera, canvasState.mode, setCanvasState, startDrawing]
@@ -158,53 +312,53 @@ function App() {
 
   const onPointerMove = useCallback((e) => {
     e.preventDefault()
+    console.log("on pointer move")
     const current = pointerEventToCanvasPoint(e, camera);
     // console.log(current)
     if (canvasState.mode === CanvasMode.Pressing) {
-      // startMultiSelection(current, canvasState.origin);
+      startMultiSelection(current, canvasState.origin);
     } else if (canvasState.mode === CanvasMode.SelectionNet) {
-      // updateSelectionNet(current, canvasState.origin);
+      updateSelectionNet(current, canvasState.origin);
     } else if (canvasState.mode === CanvasMode.Translating) {
       // translateSelectedLayers(current);
     } else if (canvasState.mode === CanvasMode.Resizing) {
-      // resizeSelectedLayer(current);
+      resizeSelectedLayer(current);
     } else if (canvasState.mode === CanvasMode.Pencil) {
       continueDrawing(current, e);
     }
-    setMyPresence({ cursor: current });
-  }, [camera, canvasState, continueDrawing])
+    setMyPresence((prev) => { return { ...prev, cursor: current } });
+  }, [camera, canvasState, continueDrawing, startMultiSelection, updateSelectionNet, resizeSelectedLayer])
 
   const onPointerLeave = (e) => {
-    // console.log("on ptr leave")
-    setMyPresence({ cursor: null })
+    console.log("on ptr leave")
+    setMyPresence((prev) => { return { ...prev, cursor: null } })
   }
 
   const onPointerUp = useCallback((e) => {
     const point = pointerEventToCanvasPoint(e, camera);
-
+    console.log("on pointer up")
     if (
       canvasState.mode === CanvasMode.None ||
       canvasState.mode === CanvasMode.Pressing
     ) {
-      // unselectLayers();
-      // setCanvasState({
-      //   mode: CanvasMode.None,
-      // });
+      unselectLayers();
+      setCanvasState({
+        mode: CanvasMode.None,
+      });
     } else if (canvasState.mode === CanvasMode.Pencil) {
       console.log("insert path")
       insertPath();
     } else if (canvasState.mode === CanvasMode.Inserting) {
-      // insertLayer(canvasState.layerType, point);
+      insertLayer(canvasState.layerType, point);
     } else {
-      // setCanvasState({
-      //   mode: CanvasMode.None,
-      // });
+      setCanvasState({
+        mode: CanvasMode.None,
+      });
     }
     // history.resume();
 
 
-  }, [camera, canvasState.mode, insertPath])
-
+  }, [camera, canvasState.mode, insertPath, insertLayer, canvasState.layerType, unselectLayers])
 
   return (
     <>
@@ -226,14 +380,32 @@ function App() {
                 id={layerId}
                 mode={canvasState.mode}
                 layers={layers}
-              // onLayerPointerDown={onLayerPointerDown}
+                onLayerPointerDown={onLayerPointerDown}
+                selected={myPresence?.selection.includes(layerId) || false}
               // selectionColor={layerIdsToColorSelection[layerId]}
               />
             ))}
-            <rect width="100" height="100" x={40} y={50} />
-            <rect width="200" height="100" x={100} y={150} />
-            <rect width="300" height="100" x={440} y={350} />
           </g>
+          {/* Blue square that show the selection of the current users. Also contains the resize handles. */}
+          <SelectionBox
+            myPresence={myPresence}
+            layers={layers}
+            onResizeHandlePointerDown={onResizeHandlePointerDown}
+            camera={camera}
+          />
+          {/* Selection net that appears when the user is selecting multiple layers at once */}
+          {canvasState.mode === CanvasMode.SelectionNet &&
+            canvasState.current != null && (
+              <rect
+                className="fill-blue-600/5 stroke-blue-600 stroke-1 "
+                x={Math.min(canvasState.origin.x, canvasState.current.x) + camera.x}
+                y={Math.min(canvasState.origin.y, canvasState.current.y) + camera.y}
+                width={Math.abs(canvasState.origin.x - canvasState.current.x)}
+                height={Math.abs(
+                  canvasState.origin.y - canvasState.current.y
+                )}
+              />
+            )}
           {/* Drawing in progress. Still not commited to the storage. */}
           {pencilDraft != null && pencilDraft.length > 0 && (
             <Path

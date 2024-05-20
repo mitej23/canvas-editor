@@ -5,7 +5,7 @@ import Rectangle from './Rectangle'
 import { colorToCss } from '../utils';
 import { CanvasMode, LayerType } from '../App';
 
-const LayerComponent = ({ mode, onLayerPointerDown, id, selectionColor, layers }) => {
+const LayerComponent = ({ mode, onLayerPointerDown, id, selected, layers }) => {
   const layer = layers[id];
   if (!layer) {
     return null;
@@ -21,7 +21,7 @@ const LayerComponent = ({ mode, onLayerPointerDown, id, selectionColor, layers }
           id={id}
           layer={layer}
           onPointerDown={onLayerPointerDown}
-          selectionColor={selectionColor}
+          selected={selected}
         />
       );
     case LayerType.Path:
@@ -33,7 +33,7 @@ const LayerComponent = ({ mode, onLayerPointerDown, id, selectionColor, layers }
           x={layer.x}
           y={layer.y}
           fill={layer.fill ? colorToCss(layer.fill) : "#CCC"}
-          stroke={selectionColor}
+          selected={selected}
         />
       );
     case LayerType.Rectangle:
@@ -42,7 +42,7 @@ const LayerComponent = ({ mode, onLayerPointerDown, id, selectionColor, layers }
           id={id}
           layer={layer}
           onPointerDown={onLayerPointerDown}
-          selectionColor={selectionColor}
+          selected={selected}
         />
       );
     default:
