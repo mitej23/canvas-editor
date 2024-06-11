@@ -1,18 +1,31 @@
-import { CanvasMode, LayerType } from "../App"
-import EllipseButton from "./button/EllipseButton"
-import PencilButton from "./button/PencilButton"
-import RectangleButton from "./button/RectangleButton"
-import SelectionButton from "./button/SelectionButton"
+import { CanvasMode, CanvasState, LayerType } from "../types";
+import EllipseButton from "./button/EllipseButton";
+import PencilButton from "./button/PencilButton";
+import RectangleButton from "./button/RectangleButton";
+import SelectionButton from "./button/SelectionButton";
+
+type Props = {
+  canvasState: CanvasState;
+  setCanvasState: (newState: CanvasState) => void;
+  undo?: () => void;
+  redo?: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+};
 
 const ToolsBar = ({
-  canvasState, setCanvasState, undo, redo, canUndo, canRedo
-}) => {
-
+  canvasState,
+  setCanvasState,
+  undo,
+  redo,
+  canUndo,
+  canRedo,
+}: Props) => {
   return (
     <div className="absolute bottom-24 right-0 left-0 flex items-center justify-center">
       <div className="shadow-md border bg-white rounded-3xl bg-surface-panel flex items-center justify-center">
         <div className="flex items-center justify-center space-x-4">
-          <div className='flex flex-row p-3'>
+          <div className="flex flex-row p-3">
             <SelectionButton
               isActive={
                 canvasState.mode === CanvasMode.None ||
@@ -51,18 +64,17 @@ const ToolsBar = ({
                 })
               }
             />
-
           </div>
           {/* seperator */}
-          <div className="h-8 bg-gray-300 w-[1px]" ></div>
-          <div className='p-3'>
+          <div className="h-8 bg-gray-300 w-[1px]"></div>
+          <div className="p-3">
             <button onClick={() => alert("undo")}>Undo</button>
             <button onClick={() => alert("redo")}>Redo</button>
           </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ToolsBar
+export default ToolsBar;

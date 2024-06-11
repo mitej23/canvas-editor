@@ -1,7 +1,12 @@
-import React from 'react'
-import IconButton from './IconButton'
+import React from "react";
+import IconButton from "./IconButton";
 
-const EllipseButton = ({ isActive, handleOnClick }) => {
+type Props = {
+  isActive: boolean;
+  handleOnClick: () => void;
+};
+
+const EllipseButton = ({ isActive, handleOnClick }: Props) => {
   return (
     <IconButton isActive={isActive} handleOnClick={handleOnClick}>
       <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -13,7 +18,7 @@ const EllipseButton = ({ isActive, handleOnClick }) => {
         />
       </svg>
     </IconButton>
-  )
-}
+  );
+};
 
-export default EllipseButton
+export default EllipseButton;

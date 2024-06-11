@@ -1,28 +1,32 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable react/display-name */
-import { memo } from 'react'
-import { LayerType } from '../App';
-import { selectionBOunds } from '../utils';
-
-export const Side = Object.freeze({
-  Top: 1,
-  Bottom: 2,
-  Left: 4,
-  Right: 8,
-});
+import { memo } from "react";
+import { selectionBOunds } from "../utils";
+import { Camera, LayerType, LayersMap, MyPresence, Side, XYWH } from "../types";
 
 const HANDLE_WIDTH = 8;
 
+type SelectionBoxProps = {
+  onResizeHandlePointerDown: (corner: Side, initialBounds: XYWH) => void;
+  myPresence: MyPresence;
+  layers: LayersMap;
+  camera: Camera;
+};
+
 const SelectionBox = memo(
-  ({ onResizeHandlePointerDown, myPresence, layers, camera }) => {
-
+  ({
+    onResizeHandlePointerDown,
+    myPresence,
+    layers,
+    camera,
+  }: SelectionBoxProps) => {
     const soleLayerId =
-      (myPresence?.selection?.length || 0) === 1 ? myPresence?.selection[0] : null
-
+      (myPresence?.selection?.length || 0) === 1
+        ? myPresence?.selection[0]
+        : null;
 
     const isShowingHandles =
-      soleLayerId && layers[soleLayerId]?.type !== LayerType.Path
-
+      soleLayerId && layers[soleLayerId]?.type !== LayerType.Path;
 
     const bounds = selectionBOunds(layers, myPresence);
     if (!bounds) {
@@ -35,7 +39,9 @@ const SelectionBox = memo(
         <rect
           className="fill-transparent stroke-blue-600 stroke-1 pointer-events-none"
           style={{
-            transform: `translate(${bounds.x + camera.x}px, ${bounds.y + camera.y}px)`,
+            transform: `translate(${bounds.x + camera.x}px, ${
+              bounds.y + camera.y
+            }px)`,
           }}
           x={0}
           y={0}
@@ -45,15 +51,16 @@ const SelectionBox = memo(
         {isShowingHandles && (
           <>
             <rect
-              className='fill-white stroke-blue-700 stroke-1'
+              className="fill-white stroke-blue-700 stroke-1"
               x={0}
               y={0}
               style={{
                 cursor: "nwse-resize",
                 width: `${HANDLE_WIDTH}px`,
                 height: `${HANDLE_WIDTH}px`,
-                transform: `translate(${(bounds.x + camera.x) - HANDLE_WIDTH / 2}px, ${(bounds.y + camera.y) - HANDLE_WIDTH / 2
-                  }px)`,
+                transform: `translate(${
+                  bounds.x + camera.x - HANDLE_WIDTH / 2
+                }px, ${bounds.y + camera.y - HANDLE_WIDTH / 2}px)`,
               }}
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -61,15 +68,16 @@ const SelectionBox = memo(
               }}
             />
             <rect
-              className='fill-white stroke-blue-700 stroke-1'
+              className="fill-white stroke-blue-700 stroke-1"
               x={0}
               y={0}
               style={{
                 cursor: "ns-resize",
                 width: `${HANDLE_WIDTH}px`,
                 height: `${HANDLE_WIDTH}px`,
-                transform: `translate(${(bounds.x + camera.x) + bounds.width / 2 - HANDLE_WIDTH / 2
-                  }px, ${(bounds.y + camera.y) - HANDLE_WIDTH / 2}px)`,
+                transform: `translate(${
+                  bounds.x + camera.x + bounds.width / 2 - HANDLE_WIDTH / 2
+                }px, ${bounds.y + camera.y - HANDLE_WIDTH / 2}px)`,
               }}
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -84,8 +92,9 @@ const SelectionBox = memo(
                 cursor: "nesw-resize",
                 width: `${HANDLE_WIDTH}px`,
                 height: `${HANDLE_WIDTH}px`,
-                transform: `translate(${(bounds.x + camera.x) - HANDLE_WIDTH / 2 + bounds.width
-                  }px, ${(bounds.y + camera.y) - HANDLE_WIDTH / 2}px)`,
+                transform: `translate(${
+                  bounds.x + camera.x - HANDLE_WIDTH / 2 + bounds.width
+                }px, ${bounds.y + camera.y - HANDLE_WIDTH / 2}px)`,
               }}
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -100,8 +109,11 @@ const SelectionBox = memo(
                 cursor: "ew-resize",
                 width: `${HANDLE_WIDTH}px`,
                 height: `${HANDLE_WIDTH}px`,
-                transform: `translate(${(bounds.x + camera.x) - HANDLE_WIDTH / 2 + bounds.width
-                  }px, ${(bounds.y + camera.y) + bounds.height / 2 - HANDLE_WIDTH / 2}px)`,
+                transform: `translate(${
+                  bounds.x + camera.x - HANDLE_WIDTH / 2 + bounds.width
+                }px, ${
+                  bounds.y + camera.y + bounds.height / 2 - HANDLE_WIDTH / 2
+                }px)`,
               }}
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -116,8 +128,11 @@ const SelectionBox = memo(
                 cursor: "nwse-resize",
                 width: `${HANDLE_WIDTH}px`,
                 height: `${HANDLE_WIDTH}px`,
-                transform: `translate(${(bounds.x + camera.x) - HANDLE_WIDTH / 2 + bounds.width
-                  }px, ${(bounds.y + camera.y) - HANDLE_WIDTH / 2 + bounds.height}px)`,
+                transform: `translate(${
+                  bounds.x + camera.x - HANDLE_WIDTH / 2 + bounds.width
+                }px, ${
+                  bounds.y + camera.y - HANDLE_WIDTH / 2 + bounds.height
+                }px)`,
               }}
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -132,8 +147,11 @@ const SelectionBox = memo(
                 cursor: "ns-resize",
                 width: `${HANDLE_WIDTH}px`,
                 height: `${HANDLE_WIDTH}px`,
-                transform: `translate(${(bounds.x + camera.x) + bounds.width / 2 - HANDLE_WIDTH / 2
-                  }px, ${(bounds.y + camera.y) - HANDLE_WIDTH / 2 + bounds.height}px)`,
+                transform: `translate(${
+                  bounds.x + camera.x + bounds.width / 2 - HANDLE_WIDTH / 2
+                }px, ${
+                  bounds.y + camera.y - HANDLE_WIDTH / 2 + bounds.height
+                }px)`,
               }}
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -148,8 +166,11 @@ const SelectionBox = memo(
                 cursor: "nesw-resize",
                 width: `${HANDLE_WIDTH}px`,
                 height: `${HANDLE_WIDTH}px`,
-                transform: `translate(${(bounds.x + camera.x) - HANDLE_WIDTH / 2}px, ${(bounds.y + camera.y) - HANDLE_WIDTH / 2 + bounds.height
-                  }px)`,
+                transform: `translate(${
+                  bounds.x + camera.x - HANDLE_WIDTH / 2
+                }px, ${
+                  bounds.y + camera.y - HANDLE_WIDTH / 2 + bounds.height
+                }px)`,
               }}
               onPointerDown={(e) => {
                 e.stopPropagation();
@@ -164,8 +185,11 @@ const SelectionBox = memo(
                 cursor: "ew-resize",
                 width: `${HANDLE_WIDTH}px`,
                 height: `${HANDLE_WIDTH}px`,
-                transform: `translate(${(bounds.x + camera.x) - HANDLE_WIDTH / 2}px, ${(bounds.y + camera.y) - HANDLE_WIDTH / 2 + bounds.height / 2
-                  }px)`,
+                transform: `translate(${
+                  bounds.x + camera.x - HANDLE_WIDTH / 2
+                }px, ${
+                  bounds.y + camera.y - HANDLE_WIDTH / 2 + bounds.height / 2
+                }px)`,
               }}
               onPointerDown={(e) => {
                 e.stopPropagation();

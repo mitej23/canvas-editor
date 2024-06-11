@@ -1,7 +1,12 @@
-import React from 'react'
-import IconButton from './IconButton'
+import React from "react";
+import IconButton from "./IconButton";
 
-const PencilButton = ({ isActive, handleOnClick }) => {
+type Props = {
+  isActive: boolean;
+  handleOnClick: () => void;
+};
+
+const PencilButton = ({ isActive, handleOnClick }: Props) => {
   return (
     <IconButton isActive={isActive} handleOnClick={handleOnClick}>
       <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -11,7 +16,7 @@ const PencilButton = ({ isActive, handleOnClick }) => {
         />
       </svg>
     </IconButton>
-  )
-}
+  );
+};
 
-export default PencilButton
+export default PencilButton;

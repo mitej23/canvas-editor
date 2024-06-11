@@ -1,7 +1,11 @@
-import React from 'react'
-import IconButton from './IconButton'
+import IconButton from "./IconButton";
 
-const RectangleButton = ({ isActive, handleOnClick }) => {
+type Props = {
+  isActive: boolean;
+  handleOnClick: () => void;
+};
+
+const RectangleButton = ({ isActive, handleOnClick }: Props) => {
   return (
     <IconButton isActive={isActive} handleOnClick={handleOnClick}>
       <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -13,7 +17,7 @@ const RectangleButton = ({ isActive, handleOnClick }) => {
         />
       </svg>
     </IconButton>
-  )
-}
+  );
+};
 
-export default RectangleButton
+export default RectangleButton;

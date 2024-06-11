@@ -1,11 +1,26 @@
-import React, { memo } from 'react'
-import Path from './Path';
-import Ellipse from './Ellipse';
-import Rectangle from './Rectangle'
-import { colorToCss } from '../utils';
-import { CanvasMode, LayerType } from '../App';
+import React, { memo } from "react";
+import Path from "./Path";
+import { colorToCss } from "../utils";
+import { CanvasMode, LayerType, LayersMap } from "../types";
+import Rectangle from "./Rectangle";
+import Ellipse from "./Ellipse";
 
-const LayerComponent = ({ mode, onLayerPointerDown, id, selected, layers }) => {
+type Props = {
+  id: string;
+  mode: CanvasMode;
+  onLayerPointerDown: (e: React.PointerEvent, layerId: string) => void;
+  selectionColor?: string;
+  selected: boolean;
+  layers: LayersMap;
+};
+
+const LayerComponent = ({
+  mode,
+  onLayerPointerDown,
+  id,
+  selected,
+  layers,
+}: Props) => {
   const layer = layers[id];
   if (!layer) {
     return null;
@@ -49,6 +64,6 @@ const LayerComponent = ({ mode, onLayerPointerDown, id, selected, layers }) => {
       console.warn("Unknown layer type");
       return null;
   }
-}
+};
 
-export default LayerComponent
+export default LayerComponent;
