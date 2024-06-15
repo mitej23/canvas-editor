@@ -2,3 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  cursor: url("/cursor.svg") 4 4, auto; /* Adjust the hot spot coordinates (4 4) as needed */
+}

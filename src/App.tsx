@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Camera,
   CanvasMode,
@@ -25,9 +25,17 @@ import ToolsBar from "./components/ToolsBar";
 import Path from "./components/Path";
 import SelectionBox from "./components/SelectionBox";
 import LayerComponent from "./components/LayerComponent";
+import { HocuspocusProvider } from "@hocuspocus/provider";
+import Presence from "./components/Presence";
 
 // import { colorToCss, findIntersectingLayersWithRectangle, penPointsToPathLayer, pointerEventToCanvasPoint, resizeBounds } from './utils';
 // import Path from './components/Path';
+
+export const provider = new HocuspocusProvider({
+  url: "ws://127.0.0.1:5000/collaboration",
+  name: "example-document",
+});
+const tasks = provider.document.getArray("tasks");
 
 function App() {
   const [myPresence, setMyPresence] = useState<MyPresence>({ selection: [] });
@@ -189,7 +197,7 @@ function App() {
           ...prevMyPresence,
           selection: ids,
         };
-        console.log(newPresence); // Log to inspect the new presence state before setting it
+        // console.log(newPresence); // Log to inspect the new presence state before setting it
         return newPresence;
       });
     },
@@ -250,7 +258,7 @@ function App() {
 
   const resizeSelectedLayer = useCallback(
     (point: Point) => {
-      console.log("resizing...");
+      // console.log("resizing...");
       if (canvasState.mode !== CanvasMode.Resizing) {
         return;
       }
@@ -329,7 +337,7 @@ function App() {
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      console.log("pointer down");
+      // console.log("pointer down");
       const point = pointerEventToCanvasPoint(e, camera);
 
       if (canvasState.mode === CanvasMode.Inserting) {
@@ -346,32 +354,29 @@ function App() {
     [camera, canvasState.mode, setCanvasState]
   );
 
-  const onPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      console.log("on pointer move");
-      const current = pointerEventToCanvasPoint(e, camera);
-      // console.log(current)
-      if (canvasState.mode === CanvasMode.Pressing) {
-        startMultiSelection(current, canvasState.origin);
-      } else if (canvasState.mode === CanvasMode.SelectionNet) {
-        updateSelectionNet(current, canvasState.origin);
-      } else if (canvasState.mode === CanvasMode.Translating) {
-        translateSelectedLayers(current);
-      } else if (canvasState.mode === CanvasMode.Resizing) {
-        resizeSelectedLayer(current);
-      } else if (canvasState.mode === CanvasMode.Pencil) {
-        continueDrawing(current, e);
-      }
-      setMyPresence((prev) => {
-        return { ...prev, cursor: current };
-      });
-    },
-    [camera, canvasState, startMultiSelection]
-  );
+  const onPointerMove = (e: React.PointerEvent) => {
+    e.preventDefault();
+    // console.log("on pointer move");
+    const current = pointerEventToCanvasPoint(e, camera);
+    provider!.setAwarenessField("cursor", current);
+    if (canvasState.mode === CanvasMode.Pressing) {
+      startMultiSelection(current, canvasState.origin);
+    } else if (canvasState.mode === CanvasMode.SelectionNet) {
+      updateSelectionNet(current, canvasState.origin);
+    } else if (canvasState.mode === CanvasMode.Translating) {
+      translateSelectedLayers(current);
+    } else if (canvasState.mode === CanvasMode.Resizing) {
+      resizeSelectedLayer(current);
+    } else if (canvasState.mode === CanvasMode.Pencil) {
+      continueDrawing(current, e);
+    }
+    setMyPresence((prev) => {
+      return { ...prev, cursor: current };
+    });
+  };
 
   const onPointerLeave = () => {
-    console.log("on ptr leave");
+    // console.log("on ptr leave");
     setMyPresence((prev) => {
       return { ...prev, cursor: null };
     });
@@ -380,7 +385,7 @@ function App() {
   const onPointerUp = useCallback(
     (e: React.PointerEvent) => {
       const point = pointerEventToCanvasPoint(e, camera);
-      console.log("on pointer up");
+      // console.log("on pointer up");
       if (
         canvasState.mode === CanvasMode.None ||
         canvasState.mode === CanvasMode.Pressing
@@ -390,7 +395,7 @@ function App() {
           mode: CanvasMode.None,
         });
       } else if (canvasState.mode === CanvasMode.Pencil) {
-        console.log("insert path");
+        // console.log("insert path");
         insertPath();
       } else if (canvasState.mode === CanvasMode.Inserting) {
         insertLayer(canvasState.layerType, point);
@@ -412,7 +417,7 @@ function App() {
   );
 
   return (
-    <>
+    <div className="">
       <div className="touch-none">
         <svg
           className="h-screen w-screen bg-gray-100 relative"
@@ -481,7 +486,8 @@ function App() {
         canUndo={false}
         canRedo={false}
       />
-    </>
+      <Presence camera={camera} />
+    </div>
   );
 }
 

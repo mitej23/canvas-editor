@@ -22,7 +22,7 @@ const ToolsBar = ({
   canRedo,
 }: Props) => {
   return (
-    <div className="absolute bottom-24 right-0 left-0 flex items-center justify-center">
+    <div className="absolute bottom-8 right-0 left-0 flex items-center justify-center">
       <div className="shadow-md border bg-white rounded-3xl bg-surface-panel flex items-center justify-center">
         <div className="flex items-center justify-center space-x-4">
           <div className="flex flex-row p-3">
