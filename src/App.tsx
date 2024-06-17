@@ -29,14 +29,12 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 import Presence, { OtherPencilDrafts } from "./components/Presence";
 import { useUsers } from "y-presence";
 
-// import { colorToCss, findIntersectingLayersWithRectangle, penPointsToPathLayer, pointerEventToCanvasPoint, resizeBounds } from './utils';
-// import Path from './components/Path';
-
 export const provider = new HocuspocusProvider({
   url: "ws://127.0.0.1:5000/collaboration",
   name: "example-document",
 });
-const tasks = provider.document.getArray("tasks");
+const yLayers = provider.document.getMap("layers");
+const yLayersId = provider.document.getArray("layersId");
 
 function App() {
   const users = useUsers(provider.awareness);
@@ -46,7 +44,7 @@ function App() {
   });
   const [myPresence, setMyPresence] = useState<MyPresence>({ selection: [] });
   const [layers, setLayers] = useState<LayersMap>({});
-  const [layersId, setLayersId] = useState<string[]>([]);
+  // const [layersId, setLayersId] = useState<string[]>([]);
   const [canvasState, setCanvasState] = useState<CanvasState>({
     mode: CanvasMode.None,
   });
@@ -114,24 +112,22 @@ function App() {
         camera
       );
 
+      yLayersId.insert(yLayersId.toArray().length - 1, [id]);
+      yLayers.set(id, newLayer);
+
       // Update layersId and layers state
-      setLayersId((prevLayersId) => [...prevLayersId, id]);
-      setLayers((prevLayers) => ({
-        ...prevLayers,
-        [id]: newLayer,
-      }));
-      // setMyPresence((prevPresence) => ({ ...prevPresence, pencilDraft: null }));
       setCanvasState((prevCanvasState) => ({
         ...prevCanvasState,
         mode: CanvasMode.Pencil,
       }));
 
+      provider.setAwarenessField("pencilDraft", null);
       return []; // Clear the pencil draft
     });
   }, [
     lastUsedColor,
-    setLayersId,
-    setLayers,
+    yLayers,
+    yLayersId,
     setMyPresence,
     setCanvasState,
     camera,
@@ -148,11 +144,8 @@ function App() {
         width: 100,
         fill: lastUsedColor,
       };
-      setLayersId((prevLayersId) => [...prevLayersId, layerId]);
-      setLayers((prevLayers) => ({
-        ...prevLayers,
-        [layerId]: newLayer,
-      }));
+      yLayersId.insert(yLayersId.toArray().length - 1, [layerId]);
+      yLayers.set(layerId, newLayer);
 
       // setMyPresence((prevPresence) => ({
       //   ...prevPresence,
@@ -197,8 +190,8 @@ function App() {
       });
 
       const ids = findIntersectingLayersWithRectangle(
-        layersId,
-        layers,
+        yLayersId.toArray(),
+        yLayers.toJSON(),
         origin,
         current
       );
@@ -215,7 +208,7 @@ function App() {
       });
       provider.setAwarenessField("selection", ids);
     },
-    [layersId, layers]
+    [yLayers]
   );
 
   const onLayerPointerDown = useCallback(
@@ -284,20 +277,20 @@ function App() {
         point
       );
 
-      setLayers((prevLayers) => {
-        const layerId = myPresence.selection[0];
-        const layer = prevLayers[layerId];
-        if (layer) {
-          return {
-            ...prevLayers,
-            [layerId]: {
-              ...layer,
-              ...bounds,
-            },
-          };
-        }
-        return prevLayers;
-      });
+      // setLayers((prevLayers) => {
+      //   const layerId = myPresence.selection[0];
+      //   const layer = prevLayers[layerId];
+      //   if (layer) {
+      //     return {
+      //       ...prevLayers,
+      //       [layerId]: {
+      //         ...layer,
+      //         ...bounds,
+      //       },
+      //     };
+      //   }
+      //   return prevLayers;
+      // });
     },
     [canvasState, myPresence.selection]
   );
@@ -313,26 +306,26 @@ function App() {
         y: point.y - canvasState.current.y,
       };
 
-      setLayers((prevLayers) => {
-        if (!myPresence.selection || myPresence.selection.length === 0) {
-          return prevLayers;
-        }
+      // setLayers((prevLayers) => {
+      //   if (!myPresence.selection || myPresence.selection.length === 0) {
+      //     return prevLayers;
+      //   }
 
-        const updatedLayers = { ...prevLayers };
+      //   const updatedLayers = { ...prevLayers };
 
-        for (const id of myPresence.selection) {
-          const layer = updatedLayers[id];
-          if (layer) {
-            updatedLayers[id] = {
-              ...layer,
-              x: layer.x + offset.x,
-              y: layer.y + offset.y,
-            };
-          }
-        }
+      //   for (const id of myPresence.selection) {
+      //     const layer = updatedLayers[id];
+      //     if (layer) {
+      //       updatedLayers[id] = {
+      //         ...layer,
+      //         x: layer.x + offset.x,
+      //         y: layer.y + offset.y,
+      //       };
+      //     }
+      //   }
 
-        return updatedLayers;
-      });
+      //   return updatedLayers;
+      // });
 
       setCanvasState({ mode: CanvasMode.Translating, current: point });
     },
@@ -412,7 +405,7 @@ function App() {
           mode: CanvasMode.None,
         });
       } else if (canvasState.mode === CanvasMode.Pencil) {
-        // console.log("insert path");
+        console.log("insert path");
         insertPath();
       } else if (canvasState.mode === CanvasMode.Inserting) {
         insertLayer(canvasState.layerType, point);
@@ -433,6 +426,9 @@ function App() {
     ]
   );
 
+  console.log(yLayersId.toArray());
+  console.log(yLayers.toJSON());
+
   return (
     <div className="">
       <div className="touch-none">
@@ -447,12 +443,12 @@ function App() {
             style={{
               transform: `translate(${camera.x}px, ${camera.y}px)`,
             }}>
-            {layersId.map((layerId) => (
+            {yLayersId.toArray().map((layerId) => (
               <LayerComponent
                 key={layerId}
                 id={layerId}
                 mode={canvasState.mode}
-                layers={layers}
+                layers={yLayers.toJSON()}
                 onLayerPointerDown={onLayerPointerDown}
                 selected={false}
                 // selected={myPresence?.selection.includes(layerId) || false}
