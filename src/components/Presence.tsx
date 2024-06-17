@@ -11,6 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
+import Path from "./Path";
 
 const Cursor = React.memo(
   ({ point, color }: { point?: number[]; color?: string }) => {
@@ -48,9 +49,9 @@ const Cursor = React.memo(
         viewBox="0 0 24 24"
         fill={color}
         stroke={color}
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
         className="lucide lucide-mouse-pointer-2">
         <path d="m4 4 7.07 17 2.51-7.39L21 11.07z" />
       </svg>
@@ -58,25 +59,10 @@ const Cursor = React.memo(
   }
 );
 
-const Presence: React.FC<{ camera: Camera }> = ({ camera }) => {
-  const [cursors, setCursors] = useState([]);
-  useEffect(() => {
-    const handleAwarenessChange = ({ states }) => {
-      setCursors(states);
-    };
-
-    provider?.on("awarenessChange", handleAwarenessChange);
-
-    () => {
-      provider.off("awarenessChange");
-    };
-  }, []);
-
-  console.log(cursors);
-
+const OthersCursor = ({ presence, camera }) => {
   return (
     <>
-      {cursors?.map(({ cursor, clientId }) => {
+      {presence?.map(({ cursor, clientId }) => {
         if (clientId === provider.awareness!.clientID) return null;
         if (cursor) {
           const { x, y } = cursor;
@@ -103,44 +89,83 @@ const Presence: React.FC<{ camera: Camera }> = ({ camera }) => {
           return null;
         }
       })}
-      <div className="absolute top-4 right-4 flex items-center justify-center">
-        <div className="shadow-md border bg-white rounded-xl bg-surface-panel flex items-center justify-center">
-          <div className="flex items-center justify-center space-x-2 p-2">
-            {/* avatar */}
-            {cursors?.map(({ cursor, clientId }) => {
-              if (clientId === provider.awareness!.clientID) return null;
-              if (cursor) {
-                return (
-                  <TooltipProvider>
-                    <Tooltip delayDuration={100}>
-                      <TooltipTrigger>
-                        <div className="flex items-center justify-center border-2 border-white hover:border-red-500 h-10 w-10 rounded-full bg-red-200">
-                          <p className="tracking-wide text-sm font-semibold text-red-500">
-                            MM
-                          </p>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="bottom"
-                        className="bg-white rounded mr-8">
-                        <div>
-                          <p className="font-semibold text-sm">Mitej Madan</p>
-                          <p className="text-sm">mitejmadan@gmail.com</p>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                );
-              }
-            })}
-            <div className="flex items-center justify-center border-2 border-white hover:border-red-500 h-10 w-10 rounded-full bg-red-200">
-              <p className="tracking-wide text-sm font-semibold text-red-500">
-                You
-              </p>
+    </>
+  );
+};
+
+const LiveAvatar = ({ presence }) => {
+  return (
+    <>
+      {
+        <div className="absolute top-4 right-4 flex items-center justify-center">
+          <div className="shadow-md border bg-white rounded-xl bg-surface-panel flex items-center justify-center">
+            <div className="flex items-center justify-center space-x-2 p-2">
+              {/* avatar */}
+              {presence?.map(({ cursor, clientId }) => {
+                if (clientId === provider.awareness!.clientID) return null;
+                if (cursor) {
+                  return (
+                    <TooltipProvider key={clientId}>
+                      <Tooltip delayDuration={100}>
+                        <TooltipTrigger>
+                          <div className="flex items-center justify-center border-2 border-white hover:border-red-500 h-10 w-10 rounded-full bg-red-200">
+                            <p className="tracking-wide text-sm font-semibold text-red-500">
+                              MM
+                            </p>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="bottom"
+                          className="bg-white rounded mr-8">
+                          <div>
+                            <p className="font-semibold text-sm">Mitej Madan</p>
+                            <p className="text-sm">mitejmadan@gmail.com</p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                }
+              })}
+              <div className="flex items-center justify-center border-2 border-white hover:border-red-500 h-10 w-10 rounded-full bg-red-200">
+                <p className="tracking-wide text-sm font-semibold text-red-500">
+                  You
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      }
+    </>
+  );
+};
+
+export const OtherPencilDrafts = ({ presence }) => {
+  return (
+    <>
+      {presence?.map(({ pencilDraft, clientId }) => {
+        if (clientId === provider.awareness!.clientID) return null;
+        if (pencilDraft != null && pencilDraft.length > 0) {
+          return (
+            <Path
+              points={pencilDraft}
+              fill={connectionIdToColor(clientId)}
+              x={0}
+              y={0}
+              selected={false}
+            />
+          );
+        } else null;
+      })}
+    </>
+  );
+};
+
+const Presence: React.FC<{ camera: Camera }> = ({ camera, presence }) => {
+  return (
+    <>
+      <OthersCursor presence={presence} camera={camera} />
+      <LiveAvatar presence={presence} />
     </>
   );
 };

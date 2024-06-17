@@ -26,7 +26,8 @@ import Path from "./components/Path";
 import SelectionBox from "./components/SelectionBox";
 import LayerComponent from "./components/LayerComponent";
 import { HocuspocusProvider } from "@hocuspocus/provider";
-import Presence from "./components/Presence";
+import Presence, { OtherPencilDrafts } from "./components/Presence";
+import { useUsers } from "y-presence";
 
 // import { colorToCss, findIntersectingLayersWithRectangle, penPointsToPathLayer, pointerEventToCanvasPoint, resizeBounds } from './utils';
 // import Path from './components/Path';
@@ -38,6 +39,11 @@ export const provider = new HocuspocusProvider({
 const tasks = provider.document.getArray("tasks");
 
 function App() {
+  const users = useUsers(provider.awareness);
+  let u = Array.from(users.keys()).map((key) => {
+    let values = users.get(key);
+    return { clientId: key, ...values };
+  });
   const [myPresence, setMyPresence] = useState<MyPresence>({ selection: [] });
   const [layers, setLayers] = useState<LayersMap>({});
   const [layersId, setLayersId] = useState<string[]>([]);
@@ -52,24 +58,30 @@ function App() {
   });
   const [pencilDraft, setPencilDraft] = useState<PencilDraft>([]);
 
-  const startDrawing = useCallback(
-    (point: Point, pressure: number) => {
-      setMyPresence((prevPresence) => ({
-        ...prevPresence,
-        pencilDraft: [[point.x, point.y, pressure]],
-        penColor: lastUsedColor,
-      }));
-    },
-    [lastUsedColor] // Remove `myPresence` from dependencies
-  );
+  const startDrawing = (point: Point, pressure: number) => {
+    provider.setAwarenessField("pencilDraft", [[point.x, point.y, pressure]]);
+    provider.setAwarenessField("penColor", lastUsedColor);
+  };
 
   const continueDrawing = useCallback(
     (point: Point, e: React.PointerEvent) => {
       if (canvasState.mode !== CanvasMode.Pencil || e.buttons !== 1) {
         return;
       }
-      // console.log(point, camera)
-
+      const { pencilDraft: awarenessPencilDraft } =
+        provider.awareness?.getLocalState();
+      if (
+        awarenessPencilDraft?.length === 1 &&
+        awarenessPencilDraft[0][0] === point.x &&
+        awarenessPencilDraft[0][1] === point.y
+      ) {
+        provider.setAwarenessField("pencilDraft", awarenessPencilDraft);
+      } else {
+        provider.setAwarenessField("pencilDraft", [
+          ...(awarenessPencilDraft || []),
+          [point.x + camera.x, point.y + camera.y, e.pressure],
+        ]);
+      }
       setPencilDraft((prevPencilDraft) => {
         if (
           prevPencilDraft?.length === 1 &&
@@ -89,12 +101,9 @@ function App() {
   );
 
   const insertPath = useCallback(() => {
+    provider.setAwarenessField("pencilDraft", null);
     setPencilDraft((currentPencilDraft) => {
       if (currentPencilDraft == null || currentPencilDraft.length < 2) {
-        setMyPresence((prevPresence) => ({
-          ...prevPresence,
-          pencilDraft: null,
-        }));
         return currentPencilDraft;
       }
 
@@ -111,8 +120,7 @@ function App() {
         ...prevLayers,
         [id]: newLayer,
       }));
-
-      setMyPresence((prevPresence) => ({ ...prevPresence, pencilDraft: null }));
+      // setMyPresence((prevPresence) => ({ ...prevPresence, pencilDraft: null }));
       setCanvasState((prevCanvasState) => ({
         ...prevCanvasState,
         mode: CanvasMode.Pencil,
@@ -146,22 +154,27 @@ function App() {
         [layerId]: newLayer,
       }));
 
-      setMyPresence((prevPresence) => ({
-        ...prevPresence,
-        selection: [layerId],
-      }));
+      // setMyPresence((prevPresence) => ({
+      //   ...prevPresence,
+      //   selection: [layerId],
+      // }));
+      provider.setAwarenessField("selection", [layerId]);
       setCanvasState({ mode: CanvasMode.None });
     },
     [lastUsedColor]
   );
 
   const unselectLayers = useCallback(() => {
-    setMyPresence((prevPresence) => {
-      if (prevPresence?.selection?.length > 0) {
-        return { ...prevPresence, selection: [] };
-      }
-      return prevPresence;
-    });
+    // setMyPresence((prevPresence) => {
+    //   if (prevPresence?.selection?.length > 0) {
+    //     return { ...prevPresence, selection: [] };
+    //   }
+    //   return prevPresence;
+    // });
+    // if(provider.awareness?.getLocalState()
+    provider.setAwarenessField("pencilDraft", null);
+    // console.log("unselect layers =------------------------=");
+    // console.log(provider.awareness?.getLocalState());
   }, []);
 
   const startMultiSelection = useCallback((current: Point, origin: Point) => {
@@ -200,6 +213,7 @@ function App() {
         // console.log(newPresence); // Log to inspect the new presence state before setting it
         return newPresence;
       });
+      provider.setAwarenessField("selection", ids);
     },
     [layersId, layers]
   );
@@ -218,9 +232,10 @@ function App() {
       e.stopPropagation();
       const point = pointerEventToCanvasPoint(e, camera);
       if (!myPresence?.selection.includes(layerId)) {
-        setMyPresence((prev) => {
-          return { ...prev, selection: [layerId] };
-        });
+        // setMyPresence((prev) => {
+        //   return { ...prev, selection: [layerId] };
+        // });
+        provider.setAwarenessField("selection", [layerId]);
       }
       setCanvasState({ mode: CanvasMode.Translating, current: point });
     },
@@ -358,7 +373,6 @@ function App() {
     e.preventDefault();
     // console.log("on pointer move");
     const current = pointerEventToCanvasPoint(e, camera);
-    provider!.setAwarenessField("cursor", current);
     if (canvasState.mode === CanvasMode.Pressing) {
       startMultiSelection(current, canvasState.origin);
     } else if (canvasState.mode === CanvasMode.SelectionNet) {
@@ -370,16 +384,19 @@ function App() {
     } else if (canvasState.mode === CanvasMode.Pencil) {
       continueDrawing(current, e);
     }
-    setMyPresence((prev) => {
-      return { ...prev, cursor: current };
-    });
+
+    // setMyPresence((prev) => {
+    //   return { ...prev, cursor: current };
+    // });
+    provider!.setAwarenessField("cursor", current);
   };
 
   const onPointerLeave = () => {
     // console.log("on ptr leave");
-    setMyPresence((prev) => {
-      return { ...prev, cursor: null };
-    });
+    // setMyPresence((prev) => {
+    //   return { ...prev, cursor: null };
+    // });
+    provider.setAwarenessField("cursor", null);
   };
 
   const onPointerUp = useCallback(
@@ -437,18 +454,19 @@ function App() {
                 mode={canvasState.mode}
                 layers={layers}
                 onLayerPointerDown={onLayerPointerDown}
-                selected={myPresence?.selection.includes(layerId) || false}
+                selected={false}
+                // selected={myPresence?.selection.includes(layerId) || false}
                 // selectionColor={layerIdsToColorSelection[layerId]}
               />
             ))}
           </g>
           {/* Blue square that show the selection of the current users. Also contains the resize handles. */}
-          <SelectionBox
+          {/* <SelectionBox
             myPresence={myPresence}
             layers={layers}
             onResizeHandlePointerDown={onResizeHandlePointerDown}
             camera={camera}
-          />
+          /> */}
           {/* Selection net that appears when the user is selecting multiple layers at once */}
           {canvasState.mode === CanvasMode.SelectionNet &&
             canvasState.current != null && (
@@ -476,6 +494,7 @@ function App() {
               selected={false}
             />
           )}
+          <OtherPencilDrafts presence={u} />
         </svg>
       </div>
       <ToolsBar
@@ -486,7 +505,7 @@ function App() {
         canUndo={false}
         canRedo={false}
       />
-      <Presence camera={camera} />
+      <Presence camera={camera} presence={u} />
     </div>
   );
 }
