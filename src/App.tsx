@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Camera,
   CanvasMode,
@@ -28,8 +28,8 @@ import LayerComponent from "./components/LayerComponent";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import Presence, { OtherPencilDrafts, YPresence } from "./components/Presence";
 import { useUsers } from "y-presence";
-import { useArray, useMap } from "./hooks/useYShareTypes";
-import { flushSync } from "react-dom";
+import { useArray, useMap, useUndoManager } from "./hooks/useYShareTypes";
+import * as Y from "yjs";
 
 export const provider = new HocuspocusProvider({
   url: "ws://127.0.0.1:5000/collaboration",
@@ -49,6 +49,12 @@ function App() {
     insert: insertYLayersId,
     indexOf: indexOfYLayersId,
   } = useArray(provider.document.getArray("layersId"));
+  const { undo, redo, canRedo, canUndo } = useUndoManager(
+    new Y.UndoManager([
+      provider.document.getMap("layers"),
+      provider.document.getArray("layersId"),
+    ])
+  );
 
   let u: YPresence[] = Array.from(users.keys()).map((key) => {
     let values = users.get(key);
@@ -89,14 +95,14 @@ function App() {
           break;
         }
         case "z": {
-          if (e.ctrlKey || e.metaKey) {
-            if (e.shiftKey) {
-              // history.redo();
-            } else {
-              // history.undo();
-            }
-            break;
-          }
+          console.log("undo");
+          undo();
+          break;
+        }
+        case "y": {
+          console.log("redo");
+          redo();
+          break;
         }
       }
     }
@@ -451,9 +457,6 @@ function App() {
     ]
   );
 
-  console.log(yLayers);
-  console.log(yLayersId);
-
   return (
     <div className="">
       <div className="touch-none">
@@ -520,10 +523,10 @@ function App() {
       <ToolsBar
         canvasState={canvasState}
         setCanvasState={setCanvasState}
-        // undo={history.undo}
-        // redo={history.redo}
-        canUndo={false}
-        canRedo={false}
+        undo={() => undo()}
+        redo={() => redo()}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
       <Presence camera={camera} presence={u} />
     </div>
@@ -531,4 +534,3 @@ function App() {
 }
 
 export default App;
-

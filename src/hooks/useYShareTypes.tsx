@@ -1,6 +1,36 @@
 import { useCallback, useEffect, useState } from "react";
 import * as Y from "yjs";
 
+export const useUndoManager = <T extends unknown = unknown>(
+  yUndoManger: Y.UndoManager
+): {
+  manager: Y.UndoManager;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+} => {
+  const [value, setValue] = useState(yUndoManger);
+
+  useEffect(() => {
+    yUndoManger.on("stack-item-added", (event) => {
+      setValue(yUndoManger);
+    });
+
+    yUndoManger.on("stack-item-popped", (event) => {
+      setValue(yUndoManger);
+    });
+  }, [value]);
+
+  return {
+    manager: value,
+    undo: () => value.undo(),
+    redo: () => value.redo(),
+    canUndo: value.undoStack.length > 0,
+    canRedo: value.redoStack.length > 0,
+  };
+};
+
 export const useMap = <T extends unknown = unknown>(
   yMap: Y.Map<T>
 ): {
