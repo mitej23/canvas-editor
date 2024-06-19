@@ -1,10 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { useSelf, useUsers } from "y-presence";
+import React from "react";
 import { provider } from "../App";
-import { Camera } from "../types";
-import { usePerfectCursor } from "../hooks/usePerfectCursor";
+import { Camera, Color, PencilDraft } from "../types";
 import { connectionIdToColor } from "../utils";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
   Tooltip,
   TooltipContent,
@@ -14,34 +11,15 @@ import {
 import Path from "./Path";
 
 const Cursor = React.memo(
-  ({ point, color }: { point?: number[]; color?: string }) => {
-    const rCursor = React.useRef<SVGSVGElement>(null);
-
-    const animateCursor = React.useCallback((point: number[]) => {
-      const elm = rCursor.current;
-      if (!elm) return;
-      elm.style.setProperty("top", point[1]);
-      elm.style.setProperty("left", point[0]);
-    }, []);
-
-    const onPointMove = usePerfectCursor(animateCursor);
-
-    // Update the point whenever the component updates
-    if (point) {
-      onPointMove(point);
-    }
-
-    if (!point || !color) return null;
-
+  ({ point, color }: { point: number[]; color?: string }) => {
     return (
       <svg
-        ref={rCursor}
         xmlns="http://www.w3.org/2000/svg"
         style={{
           position: "absolute",
           pointerEvents: "none",
-          top: 5,
-          left: 5,
+          top: point[1],
+          left: point[0],
           // transform: "translate(-50%, -50%)",
         }}
         width="24"
@@ -59,7 +37,20 @@ const Cursor = React.memo(
   }
 );
 
-const OthersCursor = ({ presence, camera }) => {
+export type YPresence = {
+  pencilDraft?: PencilDraft | null;
+  penColor?: Color;
+  selection?: string[];
+  cursor?: { x: number; y: number } | null;
+  clientId: number;
+};
+
+type CursorProps = {
+  camera: Camera;
+  presence: YPresence[];
+};
+
+const OthersCursor = ({ presence, camera }: CursorProps) => {
   return (
     <>
       {presence?.map(({ cursor, clientId }) => {
@@ -93,7 +84,7 @@ const OthersCursor = ({ presence, camera }) => {
   );
 };
 
-const LiveAvatar = ({ presence }) => {
+const LiveAvatar = ({ presence }: { presence: YPresence[] }) => {
   return (
     <>
       {
@@ -140,7 +131,7 @@ const LiveAvatar = ({ presence }) => {
   );
 };
 
-export const OtherPencilDrafts = ({ presence }) => {
+export const OtherPencilDrafts = ({ presence }: { presence: YPresence[] }) => {
   return (
     <>
       {presence?.map(({ pencilDraft, clientId }) => {
@@ -161,7 +152,7 @@ export const OtherPencilDrafts = ({ presence }) => {
   );
 };
 
-const Presence: React.FC<{ camera: Camera }> = ({ camera, presence }) => {
+const Presence = ({ camera, presence }: CursorProps) => {
   return (
     <>
       <OthersCursor presence={presence} camera={camera} />

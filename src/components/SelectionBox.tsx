@@ -35,7 +35,6 @@ const SelectionBox = memo(
 
     return (
       <>
-        {console.log(bounds, camera)}
         <rect
           className="fill-transparent stroke-blue-600 stroke-1 pointer-events-none"
           style={{

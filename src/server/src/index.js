@@ -6,20 +6,34 @@ const server = Server.configure({
   name: "hocuspocus-fra1-01",
   timeout: 4000, // connection healthcheck interval
   debounce: 5000, // call onStoreDocument hook
-  maxDebounce: 50000, // make sure to call above onStoreDocument hook atleast
+  maxDebounce: 5000, // make sure to call above onStoreDocument hook atleast
   quiet: false,
-  async onListen(data) {
-    console.log(`Websokcet Server is listening on port "${data.port}"!`);
+  async onConfigure(data) {
+    // Output some information
+    console.log(`Server was configured!`);
   },
   async onConnect(data) {
     console.log(`New websocket connection: ${data.documentName}`);
   },
+  async onLoadDocument() {
+    console.log("Load document from server")
+  },
   async connected() {
     console.log("connections:", server.getConnectionsCount());
   },
-  async onConfigure(data) {
-    // Output some information
-    console.log(`Server was configured!`);
+  async onStoreDocument({
+    clientsCount,
+    context,
+    document,
+    documentName,
+    instance,
+    requestHeaders,
+    requestParameters,
+    socketId,
+  }) {
+    console.log("On store document")
+    // console.log("document", document)
+    console.log("documentname ", documentName)
   },
   async onDisconnect(data) {
     // Output some information

@@ -26,25 +26,35 @@ import Path from "./components/Path";
 import SelectionBox from "./components/SelectionBox";
 import LayerComponent from "./components/LayerComponent";
 import { HocuspocusProvider } from "@hocuspocus/provider";
-import Presence, { OtherPencilDrafts } from "./components/Presence";
+import Presence, { OtherPencilDrafts, YPresence } from "./components/Presence";
 import { useUsers } from "y-presence";
+import { useArray, useMap } from "./hooks/useYShareTypes";
+import { flushSync } from "react-dom";
 
 export const provider = new HocuspocusProvider({
   url: "ws://127.0.0.1:5000/collaboration",
   name: "example-document",
 });
-const yLayers = provider.document.getMap("layers");
-const yLayersId = provider.document.getArray("layersId");
 
 function App() {
-  const users = useUsers(provider.awareness);
-  let u = Array.from(users.keys()).map((key) => {
+  const users = useUsers(provider!.awareness!);
+  const {
+    state: yLayers,
+    set: setYLayers,
+    delete: deleteYLayers,
+  } = useMap(provider.document.getMap("layers"));
+  const {
+    state: yLayersId,
+    delete: deleteYLayersId,
+    insert: insertYLayersId,
+    indexOf: indexOfYLayersId,
+  } = useArray(provider.document.getArray("layersId"));
+
+  let u: YPresence[] = Array.from(users.keys()).map((key) => {
     let values = users.get(key);
     return { clientId: key, ...values };
   });
   const [myPresence, setMyPresence] = useState<MyPresence>({ selection: [] });
-  const [layers, setLayers] = useState<LayersMap>({});
-  // const [layersId, setLayersId] = useState<string[]>([]);
   const [canvasState, setCanvasState] = useState<CanvasState>({
     mode: CanvasMode.None,
   });
@@ -55,6 +65,48 @@ function App() {
     b: 42,
   });
   const [pencilDraft, setPencilDraft] = useState<PencilDraft>([]);
+
+  const deleteLayers = useCallback(() => {
+    const ids = myPresence.selection;
+    ids.forEach((id) => {
+      deleteYLayers(id);
+      const idx = indexOfYLayersId(id);
+      deleteYLayersId(idx, 1);
+    });
+    // setting awareness
+    setMyPresence((prevPresence) => ({
+      ...prevPresence,
+      selection: [],
+    }));
+    provider.setAwarenessField("selection", []);
+  }, [yLayersId, myPresence, yLayers]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      switch (e.key) {
+        case "Backspace": {
+          deleteLayers();
+          break;
+        }
+        case "z": {
+          if (e.ctrlKey || e.metaKey) {
+            if (e.shiftKey) {
+              // history.redo();
+            } else {
+              // history.undo();
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [myPresence, yLayers, yLayersId]);
 
   const startDrawing = (point: Point, pressure: number) => {
     provider.setAwarenessField("pencilDraft", [[point.x, point.y, pressure]]);
@@ -112,8 +164,8 @@ function App() {
         camera
       );
 
-      yLayersId.insert(yLayersId.toArray().length - 1, [id]);
-      yLayers.set(id, newLayer);
+      insertYLayersId(yLayersId.length, [id]);
+      setYLayers(id, newLayer);
 
       // Update layersId and layers state
       setCanvasState((prevCanvasState) => ({
@@ -144,13 +196,14 @@ function App() {
         width: 100,
         fill: lastUsedColor,
       };
-      yLayersId.insert(yLayersId.toArray().length - 1, [layerId]);
-      yLayers.set(layerId, newLayer);
 
-      // setMyPresence((prevPresence) => ({
-      //   ...prevPresence,
-      //   selection: [layerId],
-      // }));
+      insertYLayersId(yLayersId.length, [layerId]);
+      setYLayers(layerId, newLayer);
+
+      setMyPresence((prevPresence) => ({
+        ...prevPresence,
+        selection: [layerId],
+      }));
       provider.setAwarenessField("selection", [layerId]);
       setCanvasState({ mode: CanvasMode.None });
     },
@@ -158,16 +211,13 @@ function App() {
   );
 
   const unselectLayers = useCallback(() => {
-    // setMyPresence((prevPresence) => {
-    //   if (prevPresence?.selection?.length > 0) {
-    //     return { ...prevPresence, selection: [] };
-    //   }
-    //   return prevPresence;
-    // });
-    // if(provider.awareness?.getLocalState()
+    setMyPresence((prevPresence) => {
+      if (prevPresence?.selection?.length > 0) {
+        return { ...prevPresence, selection: [] };
+      }
+      return prevPresence;
+    });
     provider.setAwarenessField("pencilDraft", null);
-    // console.log("unselect layers =------------------------=");
-    // console.log(provider.awareness?.getLocalState());
   }, []);
 
   const startMultiSelection = useCallback((current: Point, origin: Point) => {
@@ -190,20 +240,17 @@ function App() {
       });
 
       const ids = findIntersectingLayersWithRectangle(
-        yLayersId.toArray(),
-        yLayers.toJSON(),
+        yLayersId,
+        yLayers,
         origin,
         current
       );
-
-      //   console.log(ids); // Log to inspect the ids
 
       setMyPresence((prevMyPresence) => {
         const newPresence = {
           ...prevMyPresence,
           selection: ids,
         };
-        // console.log(newPresence); // Log to inspect the new presence state before setting it
         return newPresence;
       });
       provider.setAwarenessField("selection", ids);
@@ -225,9 +272,9 @@ function App() {
       e.stopPropagation();
       const point = pointerEventToCanvasPoint(e, camera);
       if (!myPresence?.selection.includes(layerId)) {
-        // setMyPresence((prev) => {
-        //   return { ...prev, selection: [layerId] };
-        // });
+        setMyPresence((prev) => {
+          return { ...prev, selection: [layerId] };
+        });
         provider.setAwarenessField("selection", [layerId]);
       }
       setCanvasState({ mode: CanvasMode.Translating, current: point });
@@ -266,7 +313,6 @@ function App() {
 
   const resizeSelectedLayer = useCallback(
     (point: Point) => {
-      // console.log("resizing...");
       if (canvasState.mode !== CanvasMode.Resizing) {
         return;
       }
@@ -277,20 +323,9 @@ function App() {
         point
       );
 
-      // setLayers((prevLayers) => {
-      //   const layerId = myPresence.selection[0];
-      //   const layer = prevLayers[layerId];
-      //   if (layer) {
-      //     return {
-      //       ...prevLayers,
-      //       [layerId]: {
-      //         ...layer,
-      //         ...bounds,
-      //       },
-      //     };
-      //   }
-      //   return prevLayers;
-      // });
+      const layerId = myPresence.selection[0];
+      const layer = yLayers[layerId];
+      setYLayers(layerId, { ...layer, ...bounds });
     },
     [canvasState, myPresence.selection]
   );
@@ -306,26 +341,22 @@ function App() {
         y: point.y - canvasState.current.y,
       };
 
-      // setLayers((prevLayers) => {
-      //   if (!myPresence.selection || myPresence.selection.length === 0) {
-      //     return prevLayers;
-      //   }
+      if (!myPresence.selection || myPresence.selection.length === 0) {
+        return yLayers;
+      }
 
-      //   const updatedLayers = { ...prevLayers };
+      const updatedLayers = { ...yLayers };
 
-      //   for (const id of myPresence.selection) {
-      //     const layer = updatedLayers[id];
-      //     if (layer) {
-      //       updatedLayers[id] = {
-      //         ...layer,
-      //         x: layer.x + offset.x,
-      //         y: layer.y + offset.y,
-      //       };
-      //     }
-      //   }
-
-      //   return updatedLayers;
-      // });
+      for (const id of myPresence.selection) {
+        const layer = updatedLayers[id];
+        if (layer) {
+          setYLayers(id, {
+            ...layer,
+            x: layer.x + offset.x,
+            y: layer.y + offset.y,
+          });
+        }
+      }
 
       setCanvasState({ mode: CanvasMode.Translating, current: point });
     },
@@ -335,8 +366,6 @@ function App() {
   // ===================================== Pointer Events =====================
 
   const onWheel = useCallback((e: React.WheelEvent) => {
-    // Pan the camera based on the wheel delta
-    // console.log(e.deltaX, e.deltaY)
     setCamera((camera) => ({
       x: camera.x - e.deltaX,
       y: camera.y - e.deltaY,
@@ -345,7 +374,6 @@ function App() {
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      // console.log("pointer down");
       const point = pointerEventToCanvasPoint(e, camera);
 
       if (canvasState.mode === CanvasMode.Inserting) {
@@ -364,7 +392,6 @@ function App() {
 
   const onPointerMove = (e: React.PointerEvent) => {
     e.preventDefault();
-    // console.log("on pointer move");
     const current = pointerEventToCanvasPoint(e, camera);
     if (canvasState.mode === CanvasMode.Pressing) {
       startMultiSelection(current, canvasState.origin);
@@ -378,24 +405,22 @@ function App() {
       continueDrawing(current, e);
     }
 
-    // setMyPresence((prev) => {
-    //   return { ...prev, cursor: current };
-    // });
+    setMyPresence((prev) => {
+      return { ...prev, cursor: current };
+    });
     provider!.setAwarenessField("cursor", current);
   };
 
   const onPointerLeave = () => {
-    // console.log("on ptr leave");
-    // setMyPresence((prev) => {
-    //   return { ...prev, cursor: null };
-    // });
+    setMyPresence((prev) => {
+      return { ...prev, cursor: null };
+    });
     provider.setAwarenessField("cursor", null);
   };
 
   const onPointerUp = useCallback(
     (e: React.PointerEvent) => {
       const point = pointerEventToCanvasPoint(e, camera);
-      // console.log("on pointer up");
       if (
         canvasState.mode === CanvasMode.None ||
         canvasState.mode === CanvasMode.Pressing
@@ -426,8 +451,8 @@ function App() {
     ]
   );
 
-  console.log(yLayersId.toArray());
-  console.log(yLayers.toJSON());
+  console.log(yLayers);
+  console.log(yLayersId);
 
   return (
     <div className="">
@@ -443,26 +468,25 @@ function App() {
             style={{
               transform: `translate(${camera.x}px, ${camera.y}px)`,
             }}>
-            {yLayersId.toArray().map((layerId) => (
+            {yLayersId.map((layerId) => (
               <LayerComponent
                 key={layerId}
                 id={layerId}
                 mode={canvasState.mode}
-                layers={yLayers.toJSON()}
+                layers={yLayers}
                 onLayerPointerDown={onLayerPointerDown}
-                selected={false}
-                // selected={myPresence?.selection.includes(layerId) || false}
+                selected={myPresence?.selection.includes(layerId) || false}
                 // selectionColor={layerIdsToColorSelection[layerId]}
               />
             ))}
           </g>
           {/* Blue square that show the selection of the current users. Also contains the resize handles. */}
-          {/* <SelectionBox
+          <SelectionBox
             myPresence={myPresence}
-            layers={layers}
+            layers={yLayers}
             onResizeHandlePointerDown={onResizeHandlePointerDown}
             camera={camera}
-          /> */}
+          />
           {/* Selection net that appears when the user is selecting multiple layers at once */}
           {canvasState.mode === CanvasMode.SelectionNet &&
             canvasState.current != null && (
