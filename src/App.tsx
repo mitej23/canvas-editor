@@ -38,17 +38,22 @@ export const provider = new HocuspocusProvider({
 
 function App() {
   const users = useUsers(provider!.awareness!);
+  let u: YPresence[] = Array.from(users.keys()).map((key) => {
+    let values = users.get(key);
+    return { clientId: key, ...values };
+  });
+  const [myPresence, setMyPresence] = useState<MyPresence>({ selection: [] });
   const {
     state: yLayers,
     set: setYLayers,
     delete: deleteYLayers,
-  } = useMap(provider.document.getMap("layers"));
+  } = useMap<Layer>(provider.document.getMap("layers"));
   const {
     state: yLayersId,
     delete: deleteYLayersId,
     insert: insertYLayersId,
     indexOf: indexOfYLayersId,
-  } = useArray(provider.document.getArray("layersId"));
+  } = useArray<string>(provider.document.getArray("layersId"));
   const { undo, redo, canRedo, canUndo } = useUndoManager(
     new Y.UndoManager([
       provider.document.getMap("layers"),
@@ -56,11 +61,6 @@ function App() {
     ])
   );
 
-  let u: YPresence[] = Array.from(users.keys()).map((key) => {
-    let values = users.get(key);
-    return { clientId: key, ...values };
-  });
-  const [myPresence, setMyPresence] = useState<MyPresence>({ selection: [] });
   const [canvasState, setCanvasState] = useState<CanvasState>({
     mode: CanvasMode.None,
   });
@@ -95,12 +95,10 @@ function App() {
           break;
         }
         case "z": {
-          console.log("undo");
           undo();
           break;
         }
         case "y": {
-          console.log("redo");
           redo();
           break;
         }
@@ -125,7 +123,7 @@ function App() {
         return;
       }
       const { pencilDraft: awarenessPencilDraft } =
-        provider.awareness?.getLocalState();
+        provider.awareness?.getLocalState() as MyPresence;
       if (
         awarenessPencilDraft?.length === 1 &&
         awarenessPencilDraft[0][0] === point.x &&
@@ -266,7 +264,6 @@ function App() {
 
   const onLayerPointerDown = useCallback(
     (e: React.PointerEvent, layerId: string) => {
-      // console.log(layerId)
       if (
         canvasState.mode === CanvasMode.Pencil ||
         canvasState.mode === CanvasMode.Inserting
@@ -274,7 +271,6 @@ function App() {
         return;
       }
 
-      // // history.pause();
       e.stopPropagation();
       const point = pointerEventToCanvasPoint(e, camera);
       if (!myPresence?.selection.includes(layerId)) {
@@ -287,23 +283,6 @@ function App() {
     },
     [setCanvasState, camera, canvasState.mode, myPresence]
   );
-
-  // ------------------- only for mulitplayer ------------------------------
-
-  // const layerIdsToColorSelection = useMemo(() => {
-  //   const layerIdsToColorSelection: Record<string, string> = {};
-
-  //   for (const user of selections) {
-  //     const [connectionId, selection] = user;
-  //     for (const layerId of selection) {
-  //       layerIdsToColorSelection[layerId] = connectionIdToColor(connectionId);
-  //     }
-  //   }
-
-  //   return layerIdsToColorSelection;
-  // }, [selections]);
-
-  // -------------------------------------------------------------------------
 
   const onResizeHandlePointerDown = useCallback(
     (corner: Side, initialBounds: XYWH) => {
@@ -479,7 +458,6 @@ function App() {
                 layers={yLayers}
                 onLayerPointerDown={onLayerPointerDown}
                 selected={myPresence?.selection.includes(layerId) || false}
-                // selectionColor={layerIdsToColorSelection[layerId]}
               />
             ))}
           </g>

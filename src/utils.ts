@@ -55,34 +55,6 @@ export function resizeBounds(bounds: XYWH, corner: Side, point: Point): XYWH {
   return result;
 }
 
-export function findIntersectingLayerWithPoint(
-  layerIds: string[],
-  layers: Map<string, Layer>,
-  point: Point
-) {
-  for (let i = layerIds.length - 1; i >= 0; i--) {
-    const layerId = layerIds[i];
-    const layer = layers.get(layerId);
-    if (layer && isHittingLayer(layer, point)) {
-      return layerId;
-    }
-  }
-
-  return null;
-}
-
-export function isHittingLayer(layer: Layer, point: Point) {
-  switch (layer.type) {
-    case LayerType.Ellipse:
-      return isHittingEllipse(layer, point);
-    // TODO: Implement path hit testing instead of using Rectangle hit box
-    case LayerType.Path:
-    case LayerType.Rectangle:
-      return isHittingRectangle(layer, point);
-    default:
-      return false;
-  }
-}
 
 function boundingBox(layers: LayersMap, selectedLayerIds: string[]) {
   const first = layers[selectedLayerIds[0]];
@@ -129,29 +101,6 @@ export function selectionBOunds(layers: LayersMap, myPresence: MyPresence) {
     return null;
   }
 }
-
-export function isHittingRectangle(layer: XYWH, point: Point) {
-  return (
-    point.x > layer.x &&
-    point.x < layer.x + layer.width &&
-    point.y > layer.y &&
-    point.y < layer.y + layer.height
-  );
-}
-
-export function isHittingEllipse(layer: EllipseLayer, point: Point) {
-  const rx = layer.width / 2;
-  const ry = layer.height / 2;
-  const cx = layer.x + layer.width / 2;
-  const cy = layer.y + layer.height / 2;
-
-  const result =
-    Math.pow(point.x - cx, 2) / Math.pow(rx, 2) +
-    Math.pow(point.y - cy, 2) / Math.pow(ry, 2);
-
-  return result <= 1;
-}
-
 
 export function findIntersectingLayersWithRectangle(
   layerIds: readonly string[],

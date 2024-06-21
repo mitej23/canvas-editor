@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@hocuspocus/provider": "^2.13.1",
+    "@million/lint": "^1.0.0-rc.26",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-tooltip": "^1.0.7",
     "class-variance-authority": "^0.7.0",
